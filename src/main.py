@@ -1,14 +1,13 @@
 from PIL import Image
-import numpy, os
+import numpy, os, shutil
 
-#rule_nr = 110
-w = 200 ; h = w
-pixel_factor = 2
+make_anyway = True # don't generate image files if they are present
+w = 5 ; h = w
+pixel_factor = 10
 
-rule_numbers = [110]
 rule_numbers = range(20)
 #rule_numbers = range(256)
-    
+
 
 def d2b(n):
     bi = bin(n)
@@ -47,52 +46,83 @@ def foo(line,rule_nr):
     next_line = []
     
     rules = get_rules(rule_nr)
+    
+    if rule_nr == 14:
+        print "LINE:",line
     for i in range(0,len(line)):
         x = line[i:i+3]
         trans = apply_rules(rules,x)
+        if rule_nr == 14:
+            print "x:", x
+            print "trans:", trans
+            
         if len(x) > 2: # furthermost right ones are ignored
             next_line.append(trans)
+        
+    
     return next_line
 
 def bar(line,pix,rule_nr):
     # transform and paint lines
     for i in range(0,h):
-        #print line
-        line = foo(line,rule_nr)
         for j in range(0,w):
             c = line[j]
             pix[j,i] = (0,0,0) if c == 1 else (255,255,255)
+        #print line
+        line = foo(line,rule_nr)
 
 def out_html(rule_numbers):
-    fp = open("../output/main.html",'w')
-    s = "<html><body>\n"
+    # copy template dirs
+    if not os.path.exists("../output/js") or not os.path.exists("../output/css"):
+        shutil.copytree("../output_template/js","../output/js/")
+        shutil.copytree("../output_template/css","../output/css/")
+    
+    f = open("../output_template/index.html",'r')
+    template = f.read()
+    files = []
     for r in rule_numbers:
-        s += "\t<span class='bla'>"
-        s += "\t\t<span class='dec'>Rule %s</span>" % r
-        s += "\t\t<pre class='bi' >%s</pre>" % d2b(r)
-        s += "\t\t<img src='images/rule%s.png'>\n" % r
-        s += "\t</span>"
-    s += "</body></html>\n"
-    fp.write(s)
+        bi = d2b(r)
+        s = """
+        <li>
+            <a class="thumb" name="rule%s" href="images/rule%s.png" title="Rule %s (%s)">
+            <img src="images/t_rule%s.png" alt="Rule %s (%s)" />
+            </a>
+            <div class="caption">
+            Rule %s (%s)
+            </div>
+        </li>
+        """ % (r, r, r, bi, r, r, bi, r, bi)
+        files.append(s)
+        #if (r%10 == 0): files.append("<br/>") 
+    
+    files = "\n".join(files)
+    template = template % {"files" : files}
+    
+    fp = open("../output/main.html",'w')
+    fp.write(template)
     fp.close()
-    print "output/main.html generated"
+    print "../output/main.html generated"
     
 def main():
-    if not os.path.isfile("../output/images/rule%s.png" % rule_numbers[len(rule_numbers)-1]): # last file exists -> don't generate
+    if make_anyway or not os.path.isfile("../output/images/rule%s.png" % rule_numbers[len(rule_numbers)-1]): # last file exists -> don't generate
         for rn in rule_numbers:
             # create image
             im = Image.new("RGB", (w, h), "white")
             pix = im.load() # pixel access matrix
             
             # init first line
-            line = list(numpy.zeros(w, dtype=numpy.int))
+            line = list(numpy.zeros(w+2, dtype=numpy.int))
             line[w/2] = 1
             
             bar(line,pix,rn)
         
-            im = im.resize((w*pixel_factor,h*pixel_factor), Image.NEAREST )
+        
             if not os.path.exists("../output/images"):
                 os.makedirs("../output/images")
+            
+            im.save("../output/images/t_rule%s.png" % rn, "PNG")
+            im = im.resize((w*pixel_factor,h*pixel_factor), Image.NEAREST    )
+            
             im.save("../output/images/rule%s.png" % rn, "PNG")
             
             print "Rule %s" % rn
