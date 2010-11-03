@@ -4,8 +4,12 @@ import numpy, os, shutil
 make_anyway = True # don't generate image files if they are present
 a = 100; pixel_factor = 6
 
-rule_numbers = range(20)
+rule_numbers = range(256)
 
+rule_study_number = 20
+
+
+import rulestudy
 from process import Ca
 
 def out_html(rule_numbers):
@@ -42,19 +46,16 @@ def out_html(rule_numbers):
     
 
 def main():
-    if not os.path.exists("../output/images"):
+    if not os.path.exists("../output/images"): # output path must exist
         os.makedirs("../output/images")
-    
-    ca = Ca()
     
     if make_anyway or not os.path.isfile("../output/images/rule%s.png" % rule_numbers[len(rule_numbers)-1]): # last file exists -> don't generate
         for rn in rule_numbers:
-            
             # init first line
             line = list(numpy.zeros(a, dtype=numpy.int))
             line[a/2] = 1
             
-            im = ca.getImage(line,rn)
+            im = Ca().getImage(line,rn)
         
             im.save("../output/images/t_rule%s.png" % rn, "PNG")
             im = im.resize((a*pixel_factor,a*pixel_factor), Image.NEAREST)
@@ -62,7 +63,13 @@ def main():
             im.save("../output/images/rule%s.png" % rn, "PNG")
             
             print "Rule %s" % rn
-        
+            
+            rulestudy.foo(rn,"../output/rules/",a,rule_study_number)
+            
+            print "Study complete"
+            
     out_html(rule_numbers)
+    rulestudy.html_out("../output/rules/")
+    
     
 main()
